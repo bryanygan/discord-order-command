@@ -95,6 +95,8 @@ async def fusion_assist(interaction: discord.Interaction):
         parts.append(f"override_aptorsuite:{info['addr2']}")
     if is_valid_field(info['notes']):
         parts.append(f"override_notes:{info['notes']}")
+    if is_valid_field(info['notes']) and 'leave' in info['notes'].lower():
+        parts.append("override_dropoff:Leave at Door")
 
     command = ' '.join(parts)
     tip_line = f"Tip: ${info['tip']}"
@@ -134,6 +136,8 @@ async def fusion_order(interaction: discord.Interaction):
         parts.append(f"override_aptorsuite:{info['addr2']}")
     if is_valid_field(info['notes']):
         parts.append(f"override_notes:{info['notes']}")
+    if is_valid_field(info['notes']) and 'leave' in info['notes'].lower():
+        parts.append("override_dropoff:Leave at Door")
 
     command = ' '.join(parts)
     tip_line = f"Tip: ${info['tip']}"
