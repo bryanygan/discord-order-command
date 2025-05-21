@@ -95,10 +95,14 @@ async def fusion_assist(interaction: discord.Interaction):
         parts.append(f"override_name:{name}")
     if is_valid_field(info['addr2']):
         parts.append(f"override_aptorsuite:{info['addr2']}")
-    if is_valid_field(info['notes']):
-        parts.append(f"override_notes:{info['notes']}")
-    if is_valid_field(info['notes']) and 'leave' in info['notes'].lower():
-        parts.append("override_dropoff:Leave at Door")
+    notes = info['notes'].strip()
+    if is_valid_field(notes):
+        if notes.lower() == 'meet at door':
+            parts.append("override_dropoff:Meet at Door")
+        else:
+            parts.append(f"override_notes:{notes}")
+            if 'leave' in notes.lower():
+                parts.append("override_dropoff:Leave at Door")
 
     command = ' '.join(parts)
     tip_line = f"Tip: ${info['tip']}"
@@ -136,10 +140,14 @@ async def fusion_order(interaction: discord.Interaction):
         parts.append(f"override_name:{name}")
     if is_valid_field(info['addr2']):
         parts.append(f"override_aptorsuite:{info['addr2']}")
-    if is_valid_field(info['notes']):
-        parts.append(f"override_notes:{info['notes']}")
-    if is_valid_field(info['notes']) and 'leave' in info['notes'].lower():
-        parts.append("override_dropoff:Leave at Door")
+    notes = info['notes'].strip()
+    if is_valid_field(notes):
+        if notes.lower() == 'meet at door':
+            parts.append("override_dropoff:Meet at Door")
+        else:
+            parts.append(f"override_notes:{notes}")
+            if 'leave' in notes.lower():
+                parts.append("override_dropoff:Leave at Door")
 
     command = ' '.join(parts)
     tip_line = f"Tip: ${info['tip']}"
