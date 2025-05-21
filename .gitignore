@@ -1,5 +1,6 @@
 *.env
 *.db
+addpool.py
 
 # Logs and databases #
 ######################
