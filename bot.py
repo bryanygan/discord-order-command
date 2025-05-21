@@ -41,7 +41,9 @@ def parse_fields(embed: discord.Embed) -> dict:
 
 # Helper: normalize name into two words
 def normalize_name(name: str) -> str:
-    parts = name.split()
+    # Remove any commas used between first and last names
+    cleaned = name.replace(",", "").strip()
+    parts = cleaned.split()
     if len(parts) >= 2:
         return f"{parts[0]} {parts[1]}"
     if len(parts) == 1:
