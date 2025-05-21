@@ -49,6 +49,11 @@ def normalize_name(name: str) -> str:
         return f"{w} {w[0]}"
     return ''
 
+# Helper: check if a field value is valid (non-empty, not 'n/a' or 'none')
+def is_valid_field(value: str) -> bool:
+    """Return True if value is non-empty and not 'n/a' or 'none' (case-insensitive)."""
+    return bool(value and value.strip().lower() not in ('n/a', 'none'))
+
 # Slash command decorator
 def owner_only(interaction: discord.Interaction) -> bool:
     return interaction.user.id == OWNER_ID
@@ -81,13 +86,14 @@ async def fusion_assist(interaction: discord.Interaction):
             "❌ Card pool is empty.", ephemeral=True)
     number, cvv = card
 
-    name = normalize_name(info['name'])
+    raw_name = info['name']
     parts = [f"/assist order order_details:{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE}"]
-    if name:
+    if is_valid_field(raw_name):
+        name = normalize_name(raw_name)
         parts.append(f"override_name:{name}")
-    if info['addr2']:
+    if is_valid_field(info['addr2']):
         parts.append(f"override_aptorsuite:{info['addr2']}")
-    if info['notes']:
+    if is_valid_field(info['notes']):
         parts.append(f"override_notes:{info['notes']}")
 
     command = ' '.join(parts)
@@ -119,13 +125,14 @@ async def fusion_order(interaction: discord.Interaction):
         return await interaction.response.send_message(
             "❌ Email pool is empty.", ephemeral=True)
 
-    name = normalize_name(info['name'])
+    raw_name = info['name']
     parts = [f"/order uber order_details:{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE},{email}"]
-    if name:
+    if is_valid_field(raw_name):
+        name = normalize_name(raw_name)
         parts.append(f"override_name:{name}")
-    if info['addr2']:
+    if is_valid_field(info['addr2']):
         parts.append(f"override_aptorsuite:{info['addr2']}")
-    if info['notes']:
+    if is_valid_field(info['notes']):
         parts.append(f"override_notes:{info['notes']}")
 
     command = ' '.join(parts)
