@@ -4,7 +4,8 @@ from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from db import get_and_remove_card, get_and_remove_email
+import sqlite3
+from db import get_and_remove_card, get_and_remove_email, DB_PATH
 
 # Load environment variables
 load_dotenv()
@@ -184,6 +185,29 @@ async def wool_order(interaction: discord.Interaction):
     tip_line = f"Tip: ${info['tip']}"
 
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
+
+
+@bot.tree.command(name='add_card', description='(Admin) Add a card to the pool')
+async def add_card(interaction: discord.Interaction, number: str, cvv: str):
+    if not owner_only(interaction):
+        return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO cards (number, cvv) VALUES (?, ?)", (number, cvv))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Card ending in {number[-4:]} added.", ephemeral=True)
+
+@bot.tree.command(name='add_email', description='(Admin) Add an email to the pool')
+async def add_email(interaction: discord.Interaction, email: str):
+    if not owner_only(interaction):
+        return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO emails (email) VALUES (?)", (email,))
+    conn.commit()
+    conn.close()
+    await interaction.response.send_message(f"✅ Email `{email}` added.", ephemeral=True)
 
 if __name__ == '__main__':
     bot.run(BOT_TOKEN)
