@@ -72,7 +72,11 @@ async def on_ready():
 
 # FusionAssist
 @bot.tree.command(name='fusion_assist', description='Format a Fusion assist order')
-async def fusion_assist(interaction: discord.Interaction):
+@app_commands.choices(mode=[
+    app_commands.Choice(name='Postmates', value='p'),
+    app_commands.Choice(name='UberEats', value='u'),
+])
+async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Choice[str]):
     if not owner_only(interaction):
         return await interaction.response.send_message("❌ You are not authorized.", ephemeral=True)
 
@@ -91,6 +95,10 @@ async def fusion_assist(interaction: discord.Interaction):
 
     raw_name = info['name']
     parts = [f"/assist order order_details:{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE}"]
+    if mode.value == 'p':
+        parts.append('mode:postmates')
+    elif mode.value == 'u':
+        parts.append('mode:ubereats')
     if is_valid_field(raw_name):
         name = normalize_name(raw_name)
         parts.append(f"override_name:{name}")
@@ -112,7 +120,11 @@ async def fusion_assist(interaction: discord.Interaction):
 
 # FusionOrder
 @bot.tree.command(name='fusion_order', description='Format a Fusion order with email')
-async def fusion_order(interaction: discord.Interaction):
+@app_commands.choices(mode=[
+    app_commands.Choice(name='Postmates', value='p'),
+    app_commands.Choice(name='UberEats', value='u'),
+])
+async def fusion_order(interaction: discord.Interaction, mode: app_commands.Choice[str]):
     if not owner_only(interaction):
         return await interaction.response.send_message("❌ You are not authorized.", ephemeral=True)
 
@@ -136,6 +148,10 @@ async def fusion_order(interaction: discord.Interaction):
 
     raw_name = info['name']
     parts = [f"/order uber order_details:{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE},{email}"]
+    if mode.value == 'p':
+        parts.append('mode:postmates')
+    elif mode.value == 'u':
+        parts.append('mode:ubereats')
     if is_valid_field(raw_name):
         name = normalize_name(raw_name)
         parts.append(f"override_name:{name}")
