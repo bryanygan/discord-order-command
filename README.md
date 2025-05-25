@@ -5,12 +5,13 @@ A Discord bot to streamline the ordering process in ZR Eats by parsing ticket em
 ## Features
 
 - **Slash Commands**: `/fusion_assist`, `/fusion_order`, `/wool_order`
-- **Embed Parsing**: Automatically extracts Group Cart Link, Name, Address Line 2, Delivery Notes, and Tip Amount from the ticket bot’s first embed.
+- **Admin Commands**: `/add_card`, `/add_email`, `/bulk_cards`, `/read_cards`, `/read_emails`, `/remove_card`, `/remove_email`
+- **Embed Parsing**: Automatically extracts Group Cart Link, Name, Address Line 2, Delivery Notes, and Tip Amount from the ticket bot's first embed.
 - **Card & Email Pools**: Consumes cards and emails from an on-disk SQLite database (`data/pool.db`) and deletes used entries.
 - **Field Validation**:
-  - Skips `Name`, `Address Line 2`, and `Delivery Notes` if marked “N/A” or “None.”
-  - Adds `override_dropoff:Leave at Door` if “leave” appears in Delivery Notes (Fusion commands only).
-  - Normalizes names into “First Last” format, removing commas.
+  - Skips `Name`, `Address Line 2`, and `Delivery Notes` if marked "N/A" or "None."
+  - Adds `override_dropoff:Leave at Door` if "leave" appears in Delivery Notes (Fusion commands only).
+  - Normalizes names into "First Last" format, removing commas.
 - **Permissions**: Only the configured `OWNER_ID` can invoke commands, with ephemeral responses.
 - **Easy Setup**: Zero-config SQLite, environment variables via `.env`, and runs on Python 3.10+.
 
@@ -51,7 +52,27 @@ A Discord bot to streamline the ordering process in ZR Eats by parsing ticket em
 
 ## Managing Card & Email Pools
 
-Populate your pools via the Python script `add_to_pool.py`, or directly with the SQLite shell:
+You can populate your pools using several methods:
+
+### Using Slash Commands (Recommended)
+
+- **Single entries**:
+  - `/add_card number:1234567812345678 cvv:123` - Add a single card
+  - `/add_email email:example@gmail.com` - Add a single email
+  - `/add_email email:priority@gmail.com top:True` - Add an email to be used first
+
+- **Bulk card upload**:
+  - `/bulk_cards` - Upload a `.txt` file with cards (format: `cardnum,cvv` per line)
+
+- **View current pools**:
+  - `/read_cards` - List all cards in the pool
+  - `/read_emails` - List all emails in the pool
+
+- **Remove entries**:
+  - `/remove_card number:1234567812345678 cvv:123` - Remove a specific card
+  - `/remove_email email:example@gmail.com` - Remove a specific email
+
+### Using Python Script
 
 - **Python script**:
   ```python
@@ -70,6 +91,8 @@ Populate your pools via the Python script `add_to_pool.py`, or directly with the
   add_emails(emails)
   ```
 
+### Using SQLite Shell
+
 - **SQLite shell**:
   ```bash
   cd data
@@ -78,6 +101,15 @@ Populate your pools via the Python script `add_to_pool.py`, or directly with the
   INSERT INTO emails (email) VALUES ('example@gmail.com');
   .exit
   ```
+
+### Bulk Card File Format
+
+For the `/bulk_cards` command, create a text file with one card per line:
+```
+1234567812345678,123
+9876543210987654,456
+5555444433332222,789
+```
 
 ## Running the Bot
 
@@ -89,23 +121,35 @@ Once the bot is online, use the slash commands in a ticket channel created by yo
 
 ## Slash Command Usage
 
+### Order Commands
 - **`/fusion_assist`**  
-  Formats a Fusion “assist” command (no email).  
+  Formats a Fusion "assist" command (no email). Choose between Postmates or UberEats mode.
 - **`/fusion_order`**  
-  Formats a Fusion “order” command (includes email).  
+  Formats a Fusion "order" command (includes email). No mode selection required.
 - **`/wool_order`**  
   Formats a Wool order URL command.
 
-Each command will return the properly formatted string plus a “Tip: $…” line.
+Each command will return the properly formatted string plus a "Tip: $…" line.
+
+### Admin Commands (Owner Only)
+- **`/add_card`** - Add a single card to the pool
+- **`/add_email`** - Add a single email to the pool (with optional priority)
+- **`/bulk_cards`** - Upload a text file with multiple cards
+- **`/read_cards`** - View all cards currently in the pool
+- **`/read_emails`** - View all emails currently in the pool
+- **`/remove_card`** - Remove a specific card from the pool
+- **`/remove_email`** - Remove a specific email from the pool
 
 ## Troubleshooting
 
-- **“Card pool is empty” or “Email pool is empty”**:  
-  Populate your pools as described above.
+- **"Card pool is empty" or "Email pool is empty"**:  
+  Populate your pools using the admin commands or methods described above.
 - **Missing embed error**:  
-  Ensure the ticket bot’s first message in the channel contains at least two embeds.
+  Ensure the ticket bot's first message in the channel contains at least two embeds.
 - **Permission denied**:  
   Verify your `OWNER_ID` in `.env` matches your Discord user ID.
+- **Bulk upload errors**:  
+  Ensure your text file uses the correct format (`cardnum,cvv`) and contains valid card data.
 
 ## Contributing
 
