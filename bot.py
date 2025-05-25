@@ -209,12 +209,25 @@ async def add_card(interaction: discord.Interaction, number: str, cvv: str):
     await interaction.response.send_message(f"✅ Card ending in {number[-4:]} added.", ephemeral=True)
 
 @bot.tree.command(name='add_email', description='(Admin) Add an email to the pool')
-async def add_email(interaction: discord.Interaction, email: str):
+@app_commands.describe(top="Add this email to the top of the pool so it's used first")
+async def add_email(interaction: discord.Interaction, email: str, top: bool = False):
     if not owner_only(interaction):
         return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("INSERT INTO emails (email) VALUES (?)", (email,))
+    if top:
+        cur.execute("SELECT MIN(id) FROM emails")
+        row = cur.fetchone()
+        min_id = row[0] if row and row[0] is not None else None
+        if min_id is None:
+            # No existing emails, just insert normally
+            cur.execute("INSERT INTO emails (email) VALUES (?)", (email,))
+        else:
+            # Prepend by assigning a lower id than any existing
+            new_id = min_id - 1
+            cur.execute("INSERT INTO emails (id, email) VALUES (?, ?)", (new_id, email))
+    else:
+        cur.execute("INSERT INTO emails (email) VALUES (?)", (email,))
     conn.commit()
     conn.close()
     await interaction.response.send_message(f"✅ Email `{email}` added.", ephemeral=True)
