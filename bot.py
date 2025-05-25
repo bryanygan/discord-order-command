@@ -122,11 +122,7 @@ async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Cho
 
 # FusionOrder
 @bot.tree.command(name='fusion_order', description='Format a Fusion order with email')
-@app_commands.choices(mode=[
-    app_commands.Choice(name='Postmates', value='p'),
-    app_commands.Choice(name='UberEats', value='u'),
-])
-async def fusion_order(interaction: discord.Interaction, mode: app_commands.Choice[str]):
+async def fusion_order(interaction: discord.Interaction):
     if not owner_only(interaction):
         return await interaction.response.send_message("❌ You are not authorized.", ephemeral=True)
 
@@ -150,10 +146,6 @@ async def fusion_order(interaction: discord.Interaction, mode: app_commands.Choi
 
     raw_name = info['name']
     parts = [f"/order uber order_details:{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE},{email}"]
-    if mode.value == 'p':
-        parts.append('mode:postmates')
-    elif mode.value == 'u':
-        parts.append('mode:ubereats')
     if is_valid_field(raw_name):
         name = normalize_name(raw_name)
         parts.append(f"override_name:{name}")
