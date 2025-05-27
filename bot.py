@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 import sqlite3
 from db import get_and_remove_card, get_and_remove_email, DB_PATH
+from logging_utils import log_command_output, get_log_stats  # Import our logging functions
 
 # Load environment variables
 load_dotenv()
@@ -118,6 +119,20 @@ async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Cho
     command = ' '.join(parts)
     tip_line = f"Tip: ${info['tip']}"
 
+    # LOG THE COMMAND OUTPUT
+    log_command_output(
+        command_type="fusion_assist",
+        user_id=interaction.user.id,
+        username=str(interaction.user),
+        channel_id=interaction.channel.id,
+        guild_id=interaction.guild.id if interaction.guild else None,
+        command_output=command,
+        tip_amount=info['tip'],
+        card_used=card,
+        email_used=None,
+        additional_data={"mode": mode.value, "parsed_fields": info}
+    )
+
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
 
 # FusionOrder
@@ -163,6 +178,20 @@ async def fusion_order(interaction: discord.Interaction):
     command = ' '.join(parts)
     tip_line = f"Tip: ${info['tip']}"
 
+    # LOG THE COMMAND OUTPUT
+    log_command_output(
+        command_type="fusion_order",
+        user_id=interaction.user.id,
+        username=str(interaction.user),
+        channel_id=interaction.channel.id,
+        guild_id=interaction.guild.id if interaction.guild else None,
+        command_output=command,
+        tip_amount=info['tip'],
+        card_used=card,
+        email_used=email,
+        additional_data={"parsed_fields": info}
+    )
+
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
 
 # WoolOrder
@@ -194,8 +223,52 @@ async def wool_order(interaction: discord.Interaction):
     command = parts[0]
     tip_line = f"Tip: ${info['tip']}"
 
+    # LOG THE COMMAND OUTPUT
+    log_command_output(
+        command_type="wool_order",
+        user_id=interaction.user.id,
+        username=str(interaction.user),
+        channel_id=interaction.channel.id,
+        guild_id=interaction.guild.id if interaction.guild else None,
+        command_output=command,
+        tip_amount=info['tip'],
+        card_used=card,
+        email_used=email,
+        additional_data={"parsed_fields": info}
+    )
+
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
 
+# View log statistics
+@bot.tree.command(name='log_stats', description='(Admin) View command logging statistics')
+@app_commands.describe(month="Month in YYYYMM format (e.g., 202405). Leave blank for current month.")
+async def log_stats(interaction: discord.Interaction, month: str = None):
+    if not owner_only(interaction):
+        return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
+    
+    stats = get_log_stats(month)
+    
+    if "error" in stats:
+        return await interaction.response.send_message(f"❌ {stats['error']}", ephemeral=True)
+    
+    # Format the statistics
+    stats_text = f"""📊 **Command Statistics for {month or 'Current Month'}**
+
+**Total Commands:** {stats['total_commands']}
+**Total Tips:** ${stats['total_tips']:.2f}
+**Unique Users:** {stats['unique_users']}
+
+**Commands by Type:**"""
+    
+    for cmd_type, count in stats['command_types'].items():
+        stats_text += f"\n  • {cmd_type}: {count}"
+    
+    stats_text += f"\n\n**Active Users:** {', '.join(stats['users'])}"
+    
+    if stats['date_range']['start']:
+        stats_text += f"\n**Date Range:** {stats['date_range']['start'][:10]} to {stats['date_range']['end'][:10]}"
+    
+    await interaction.response.send_message(stats_text, ephemeral=True)
 
 @bot.tree.command(name='add_card', description='(Admin) Add a card to the pool')
 async def add_card(interaction: discord.Interaction, number: str, cvv: str):
@@ -322,8 +395,6 @@ async def bulk_cards(interaction: discord.Interaction, file: discord.Attachment)
     except Exception as e:
         await interaction.response.send_message(f"❌ Error processing file: {str(e)}", ephemeral=True)
 
-# right after your existing commands, before the if __name__ guard:
-
 @bot.tree.command(name='read_cards', description='(Admin) List all cards in the pool')
 async def read_cards(interaction: discord.Interaction):
     if not owner_only(interaction):
@@ -342,7 +413,6 @@ async def read_cards(interaction: discord.Interaction):
     lines = [f"{num},{cvv}" for num, cvv in rows]
     payload = "Cards in pool:\n" + "\n".join(lines)
     await interaction.response.send_message(f"```{payload}```", ephemeral=True)
-
 
 @bot.tree.command(name='read_emails', description='(Admin) List all emails in the pool')
 async def read_emails(interaction: discord.Interaction):
