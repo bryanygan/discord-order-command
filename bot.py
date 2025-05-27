@@ -239,6 +239,77 @@ async def wool_order(interaction: discord.Interaction):
 
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
 
+# Print recent logs
+@bot.tree.command(name='print_logs', description='(Admin) Print recent command logs with email and card digits 9-16')
+@app_commands.describe(count="Number of recent logs to retrieve (default: 10, max: 100)")
+async def print_logs(interaction: discord.Interaction, count: int = 10):
+    if not owner_only(interaction):
+        return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
+    
+    # Validate count
+    if count < 1:
+        return await interaction.response.send_message("❌ Count must be at least 1.", ephemeral=True)
+    if count > 100:
+        return await interaction.response.send_message("❌ Maximum count is 100.", ephemeral=True)
+    
+    # Import the function from logging_utils
+    from logging_utils import get_recent_logs
+    
+    logs = get_recent_logs(count)
+    
+    if not logs:
+        return await interaction.response.send_message("❌ No logs found.", ephemeral=True)
+    
+    # Format the output
+    output_lines = []
+    for log in logs:
+        email = log.get('email_used', 'N/A')
+        
+        # Format digits 9-16 with hyphens every 4 digits
+        digits_9_16 = log.get('card_digits_9_16')
+        if digits_9_16 and len(digits_9_16) == 8:
+            # Split into groups of 4 and join with hyphens
+            formatted_digits = f"{digits_9_16[:4]}-{digits_9_16[4:]}"
+        else:
+            formatted_digits = "N/A"
+        
+        output_lines.append(f"{email} | {formatted_digits}")
+    
+    output_text = "\n".join(output_lines)
+    
+    # Check if output is too long for Discord message (2000 char limit)
+    if len(output_text) > 1800:  # Leave some buffer for formatting
+        # Create a temporary file
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
+            f.write(f"Recent {len(logs)} Command Logs\n")
+            f.write("=" * 40 + "\n\n")
+            f.write("Email | Card Digits 9-16\n")
+            f.write("-" * 40 + "\n")
+            f.write(output_text)
+            temp_file_path = f.name
+        
+        try:
+            # Send as file attachment
+            with open(temp_file_path, 'rb') as f:
+                discord_file = discord.File(f, filename=f"recent_logs_{count}.txt")
+                await interaction.response.send_message(
+                    f"📄 **Recent {len(logs)} Command Logs** (sent as file due to length)",
+                    file=discord_file,
+                    ephemeral=True
+                )
+        finally:
+            # Clean up temp file
+            import os
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+    else:
+        # Send as regular message
+        formatted_output = f"📋 **Recent {len(logs)} Command Logs**\n```\nEmail | Card Digits 9-16\n{'-' * 40}\n{output_text}\n```"
+        await interaction.response.send_message(formatted_output, ephemeral=True)
+
 # View log statistics
 @bot.tree.command(name='log_stats', description='(Admin) View command logging statistics')
 @app_commands.describe(month="Month in YYYYMM format (e.g., 202405). Leave blank for current month.")
