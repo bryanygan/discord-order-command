@@ -255,21 +255,23 @@ async def log_stats(interaction: discord.Interaction, month: str = None):
     stats_text = f"""📊 **Command Statistics for {month or 'Current Month'}**
 
 **Total Commands:** {stats['total_commands']}
-**Total Tips:** ${stats['total_tips']:.2f}
-**Unique Users:** {stats['unique_users']}
+**Unique Emails Used:** {stats['unique_emails']}
+**Unique Cards Used:** {stats['unique_cards']}
 
 **Commands by Type:**"""
     
     for cmd_type, count in stats['command_types'].items():
         stats_text += f"\n  • {cmd_type}: {count}"
     
-    stats_text += f"\n\n**Active Users:** {', '.join(stats['users'])}"
+    stats_text += f"\n\n**Emails Used:** {', '.join(stats['emails_used'])}"
+    stats_text += f"\n**Card Digits 9-12 Used:** {', '.join(stats['cards_used'])}"
     
     if stats['date_range']['start']:
         stats_text += f"\n**Date Range:** {stats['date_range']['start'][:10]} to {stats['date_range']['end'][:10]}"
     
     await interaction.response.send_message(stats_text, ephemeral=True)
 
+# All your existing admin commands remain the same...
 @bot.tree.command(name='add_card', description='(Admin) Add a card to the pool')
 async def add_card(interaction: discord.Interaction, number: str, cvv: str):
     if not owner_only(interaction):

