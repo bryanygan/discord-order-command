@@ -6,8 +6,10 @@ A Discord bot to streamline the ordering process in ZR Eats by parsing ticket em
 
 - **Slash Commands**: `/fusion_assist`, `/fusion_order`, `/wool_order`
 - **Admin Commands**: `/add_card`, `/add_email`, `/bulk_cards`, `/read_cards`, `/read_emails`, `/remove_card`, `/remove_email`
+- **Logging Commands**: `/print_logs`, `/log_stats`
 - **Embed Parsing**: Automatically extracts Group Cart Link, Name, Address Line 2, Delivery Notes, and Tip Amount from the ticket bot's first embed.
 - **Card & Email Pools**: Consumes cards and emails from an on-disk SQLite database (`data/pool.db`) and deletes used entries.
+- **Comprehensive Logging**: All command outputs are automatically logged to JSON, CSV, and TXT files with timestamps and tracking data.
 - **Field Validation**:
   - Skips `Name`, `Address Line 2`, and `Delivery Notes` if marked "N/A" or "None."
   - Adds `override_dropoff:Leave at Door` if "leave" appears in Delivery Notes (Fusion commands only).
@@ -49,6 +51,8 @@ A Discord bot to streamline the ordering process in ZR Eats by parsing ticket em
    ```
 
 2. **Database initialization**: On first run, `db.py` will auto-create `data/pool.db` with `cards` and `emails` tables.
+
+3. **Logging setup**: The bot automatically creates a `logs/` directory and saves all command outputs in multiple formats.
 
 ## Managing Card & Email Pools
 
@@ -123,13 +127,27 @@ Once the bot is online, use the slash commands in a ticket channel created by yo
 
 ### Order Commands
 - **`/fusion_assist`**  
-  Formats a Fusion "assist" command (no email). Choose between Postmates or UberEats mode.
+  Formats a Fusion "assist" command. Choose between Postmates or UberEats mode.
+  - Optional `email` parameter: Add a custom email to the command output
+  - Example: `/fusion_assist mode:UberEats email:custom@example.com`
+  
 - **`/fusion_order`**  
-  Formats a Fusion "order" command (includes email). No mode selection required.
+  Formats a Fusion "order" command (includes email from pool). No mode selection required.
+  
 - **`/wool_order`**  
   Formats a Wool order URL command.
 
 Each command will return the properly formatted string plus a "Tip: $…" line.
+
+### Logging Commands (Owner Only)
+- **`/print_logs`** - Display recent command logs with email and card digits 9-16
+  - Parameter: `count` (default: 10, max: 100)
+  - Output format: `email@example.com | 1567-4013`
+  - Long outputs are automatically sent as `.txt` file attachments
+  
+- **`/log_stats`** - View command statistics and usage data
+  - Optional parameter: `month` in YYYYMM format (e.g., 202405)
+  - Shows total commands, unique emails/cards used, command breakdowns
 
 ### Admin Commands (Owner Only)
 - **`/add_card`** - Add a single card to the pool
@@ -140,16 +158,75 @@ Each command will return the properly formatted string plus a "Tip: $…" line.
 - **`/remove_card`** - Remove a specific card from the pool
 - **`/remove_email`** - Remove a specific email from the pool
 
+## Logging System
+
+The bot automatically logs all command outputs to multiple file formats:
+
+### Log File Types
+- **JSON files** (`logs/commands_YYYYMM.json`) - Structured data for programmatic access
+- **CSV files** (`logs/commands_YYYYMM.csv`) - Easy analysis in Excel/Google Sheets
+- **TXT files** (`logs/commands_YYYYMMDD.txt`) - Human-readable daily logs
+
+### Logged Information
+- Timestamp of command execution
+- Command type (fusion_assist, fusion_order, wool_order)
+- Complete command output
+- Email used (from pool or custom)
+- Full card information with CVV
+- Card digits 9-12 and 9-16 for tracking
+- Additional metadata
+
+### Log Management
+- Monthly rotation for JSON/CSV files
+- Daily rotation for TXT files
+- Automatic directory creation
+- Error handling and validation
+
+## File Structure
+
+```
+discord-order-command/
+├── bot.py              # Main bot file
+├── db.py               # Database management
+├── logging_utils.py    # Logging functionality
+├── add_to_pool.py      # Helper script for adding cards/emails
+├── requirements.txt    # Python dependencies
+├── README.md          # This file
+├── .env               # Environment variables (create this)
+├── data/
+│   └── pool.db        # SQLite database (auto-created)
+└── logs/              # Log files (auto-created)
+    ├── commands_202405.json
+    ├── commands_202405.csv
+    └── commands_20240515.txt
+```
+
 ## Troubleshooting
 
 - **"Card pool is empty" or "Email pool is empty"**:  
   Populate your pools using the admin commands or methods described above.
+  
 - **Missing embed error**:  
   Ensure the ticket bot's first message in the channel contains at least two embeds.
+  
 - **Permission denied**:  
   Verify your `OWNER_ID` in `.env` matches your Discord user ID.
+  
 - **Bulk upload errors**:  
   Ensure your text file uses the correct format (`cardnum,cvv`) and contains valid card data.
+  
+- **Logging errors**:  
+  Check that the bot has write permissions in the project directory. The `logs/` folder will be created automatically.
+  
+- **Missing log files**:  
+  Log files are created when the first command is executed. Use `/log_stats` to verify logging is working.
+
+## Security Notes
+
+- All responses are ephemeral (only visible to the command user)
+- Card numbers are logged in full for operational needs - ensure log files are secured
+- Only the configured `OWNER_ID` can execute any commands
+- Database and log files should be backed up and secured appropriately
 
 ## Contributing
 
