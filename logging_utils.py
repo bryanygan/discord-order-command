@@ -37,8 +37,9 @@ def log_command_output(
     """
     timestamp = datetime.now()
     
-    # Extract digits 9-12 from card number (0-indexed, so positions 8-11)
+    # Extract digits 9-16 from card number (0-indexed, so positions 8-15)
     card_digits_9_12 = None
+    card_digits_9_16 = None
     card_full = None
     card_cvv = None
     if card_used:
@@ -47,6 +48,8 @@ def log_command_output(
         card_full = f"{card_number} CVV:{card_cvv}"
         if len(card_number) >= 12:
             card_digits_9_12 = card_number[8:12]  # Digits 9-12 (0-indexed)
+        if len(card_number) >= 16:
+            card_digits_9_16 = card_number[8:16]  # Digits 9-16 (0-indexed)
     
     # Prepare log entry
     log_entry = {
@@ -56,6 +59,7 @@ def log_command_output(
         "email_used": email_used,
         "card_full": card_full,
         "card_digits_9_12": card_digits_9_12,
+        "card_digits_9_16": card_digits_9_16,
         "additional_data": additional_data or {}
     }
     
@@ -138,6 +142,33 @@ def _log_to_txt(filename: str, log_entry: Dict[str, Any], timestamp: datetime):
             f.write(f"{'='*80}\n")
     except Exception as e:
         print(f"Error logging to TXT: {e}")
+
+def get_recent_logs(count: int = 10) -> list:
+    """
+    Get the most recent log entries
+    
+    Args:
+        count: Number of recent logs to retrieve
+    
+    Returns:
+        List of recent log entries
+    """
+    current_month = datetime.now().strftime('%Y%m')
+    json_file = os.path.join(LOGS_DIR, f"commands_{current_month}.json")
+    
+    if not os.path.exists(json_file):
+        return []
+    
+    try:
+        with open(json_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Sort by timestamp (most recent first) and take the requested count
+        sorted_data = sorted(data, key=lambda x: x["timestamp"], reverse=True)
+        return sorted_data[:count]
+    except Exception as e:
+        print(f"Error reading log file: {e}")
+        return []
 
 def get_log_stats(month: str = None) -> Dict[str, Any]:
     """
