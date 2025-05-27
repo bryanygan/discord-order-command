@@ -79,7 +79,8 @@ async def on_ready():
     app_commands.Choice(name='Postmates', value='p'),
     app_commands.Choice(name='UberEats', value='u'),
 ])
-async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Choice[str]):
+@app_commands.describe(email="Optional: Add a custom email to the end of the command")
+async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Choice[str], email: str = None):
     if not owner_only(interaction):
         return await interaction.response.send_message("❌ You are not authorized.", ephemeral=True)
 
@@ -97,7 +98,14 @@ async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Cho
     number, cvv = card
 
     raw_name = info['name']
-    parts = [f"/assist order order_details:{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE}"]
+    
+    # Build base command with card details and optional email
+    base_command = f"{info['link']},{number},{EXP_MONTH},{EXP_YEAR},{cvv},{ZIP_CODE}"
+    if email:
+        base_command += f",{email}"
+    
+    parts = [f"/assist order order_details:{base_command}"]
+    
     if mode.value == 'p':
         parts.append('mode:postmates')
     elif mode.value == 'u':
@@ -129,8 +137,8 @@ async def fusion_assist(interaction: discord.Interaction, mode: app_commands.Cho
         command_output=command,
         tip_amount=info['tip'],
         card_used=card,
-        email_used=None,
-        additional_data={"mode": mode.value, "parsed_fields": info}
+        email_used=email,  # Log the custom email if provided
+        additional_data={"mode": mode.value, "parsed_fields": info, "custom_email": email}
     )
 
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
