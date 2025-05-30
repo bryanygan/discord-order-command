@@ -555,5 +555,96 @@ async def remove_email(interaction: discord.Interaction, email: str):
             "❌ No matching email found in the pool.", ephemeral=True
         )
 
+@bot.tree.command(name='bulk_emails', description='(Admin) Add multiple emails from a text file')
+async def bulk_emails(interaction: discord.Interaction, file: discord.Attachment):
+    if not owner_only(interaction):
+        return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
+    
+    # Check if the file is a text file
+    if not file.filename.endswith('.txt'):
+        return await interaction.response.send_message("❌ Please upload a .txt file.", ephemeral=True)
+    
+    # Check file size (limit to 1MB for safety)
+    if file.size > 1024 * 1024:  # 1MB
+        return await interaction.response.send_message("❌ File too large. Maximum size is 1MB.", ephemeral=True)
+    
+    try:
+        # Download and read the file content
+        file_content = await file.read()
+        text_content = file_content.decode('utf-8')
+        
+        # Parse the lines
+        lines = text_content.strip().split('\n')
+        emails_to_add = []
+        invalid_lines = []
+        
+        for i, line in enumerate(lines, 1):
+            line = line.strip()
+            if not line:  # Skip empty lines
+                continue
+            
+            email = line.strip()
+            
+            # Basic email validation
+            if not email:
+                invalid_lines.append(f"Line {i}: empty email")
+                continue
+            
+            # Check if email contains @ and has reasonable format
+            if '@' not in email or len(email) < 5:
+                invalid_lines.append(f"Line {i}: '{email}' (invalid email format)")
+                continue
+            
+            # Basic email format validation (contains @ and has domain)
+            parts = email.split('@')
+            if len(parts) != 2 or not parts[0] or not parts[1] or '.' not in parts[1]:
+                invalid_lines.append(f"Line {i}: '{email}' (invalid email format)")
+                continue
+            
+            emails_to_add.append(email)
+        
+        # If there are invalid lines, show them
+        if invalid_lines:
+            error_msg = "❌ Found invalid lines:\n" + "\n".join(invalid_lines[:10])  # Limit to first 10 errors
+            if len(invalid_lines) > 10:
+                error_msg += f"\n... and {len(invalid_lines) - 10} more errors"
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # If no valid emails found
+        if not emails_to_add:
+            return await interaction.response.send_message("❌ No valid emails found in the file.", ephemeral=True)
+        
+        # Add emails to database
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        
+        added_count = 0
+        duplicate_count = 0
+        
+        for email in emails_to_add:
+            # Check if email already exists
+            cur.execute("SELECT COUNT(*) FROM emails WHERE email = ?", (email,))
+            exists = cur.fetchone()[0] > 0
+            
+            if exists:
+                duplicate_count += 1
+            else:
+                cur.execute("INSERT INTO emails (email) VALUES (?)", (email,))
+                added_count += 1
+        
+        conn.commit()
+        conn.close()
+        
+        success_msg = f"✅ Successfully added {added_count} emails to the pool."
+        if duplicate_count > 0:
+            success_msg += f" ({duplicate_count} duplicates skipped)"
+        
+        await interaction.response.send_message(success_msg, ephemeral=True)
+        
+    except UnicodeDecodeError:
+        await interaction.response.send_message("❌ Could not read file. Please ensure it's a valid UTF-8 text file.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Error processing file: {str(e)}", ephemeral=True)
+
 if __name__ == '__main__':
     bot.run(BOT_TOKEN)
