@@ -455,21 +455,27 @@ async def bulk_cards(interaction: discord.Interaction, file: discord.Attachment)
         cur = conn.cursor()
         
         added_count = 0
+        duplicate_count = 0
+        
         for number, cvv in cards_to_add:
-            try:
+            # Check if card already exists
+            cur.execute("SELECT COUNT(*) FROM cards WHERE number = ? AND cvv = ?", (number, cvv))
+            exists = cur.fetchone()[0] > 0
+            
+            if exists:
+                duplicate_count += 1
+            else:
                 cur.execute("INSERT INTO cards (number, cvv) VALUES (?, ?)", (number, cvv))
                 added_count += 1
-            except sqlite3.IntegrityError:
-                # Skip duplicate cards if there's a unique constraint
-                continue
         
         conn.commit()
         conn.close()
         
-        await interaction.response.send_message(
-            f"✅ Successfully added {added_count} cards to the pool.", 
-            ephemeral=True
-        )
+        success_msg = f"✅ Successfully added {added_count} cards to the pool."
+        if duplicate_count > 0:
+            success_msg += f" ({duplicate_count} duplicates skipped)"
+        
+        await interaction.response.send_message(success_msg, ephemeral=True)
         
     except UnicodeDecodeError:
         await interaction.response.send_message("❌ Could not read file. Please ensure it's a valid UTF-8 text file.", ephemeral=True)
