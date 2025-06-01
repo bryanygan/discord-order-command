@@ -14,7 +14,7 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 OWNER_ID = int(os.getenv('OWNER_ID'))  # your Discord user ID
 
 # Constants for card formatting
-EXP_MONTH = '05'
+EXP_MONTH = '06'
 EXP_YEAR = '30'
 ZIP_CODE = '19104'
 
