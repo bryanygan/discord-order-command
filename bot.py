@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 import sqlite3
 from db import get_and_remove_card, get_and_remove_email, DB_PATH
-from logging_utils import log_command_output, get_log_stats  # Import our logging functions
+from logging_utils import log_command_output, get_log_stats, get_full_logs
 
 # Load environment variables
 load_dotenv()
@@ -246,6 +246,67 @@ async def wool_order(interaction: discord.Interaction):
     )
 
     await interaction.response.send_message(f"```{command}```\n{tip_line}", ephemeral=True)
+
+# Print full logs command
+@bot.tree.command(name='full_logs', description='(Admin) Print recent command logs with full email and command output')
+@app_commands.describe(count="Number of recent logs to retrieve (default: 5, max: 50)")
+async def full_logs(interaction: discord.Interaction, count: int = 5):
+    if not owner_only(interaction):
+        return await interaction.response.send_message("❌ Unauthorized.", ephemeral=True)
+    
+    # Validate count
+    if count < 1:
+        return await interaction.response.send_message("❌ Count must be at least 1.", ephemeral=True)
+    if count > 50:
+        return await interaction.response.send_message("❌ Maximum count is 50.", ephemeral=True)
+    
+    logs = get_full_logs(count)
+    
+    if not logs:
+        return await interaction.response.send_message("❌ No logs found.", ephemeral=True)
+    
+    # Format the output
+    output_lines = []
+    for i, log in enumerate(logs, 1):
+        email = log.get('email_used', 'N/A')
+        command = log.get('command_output', 'N/A')
+        
+        output_lines.append(f"{i}. email used: {email}")
+        output_lines.append(f"   order command: {command}")
+        output_lines.append("")  # Empty line for spacing
+    
+    output_text = "\n".join(output_lines)
+    
+    # Check if output is too long for Discord message (2000 char limit)
+    if len(output_text) > 1800:  # Leave some buffer for formatting
+        # Create a temporary file
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
+            f.write(f"Recent {len(logs)} Full Command Logs\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(output_text)
+            temp_file_path = f.name
+        
+        try:
+            # Send as file attachment
+            with open(temp_file_path, 'rb') as f:
+                discord_file = discord.File(f, filename=f"full_logs_{count}.txt")
+                await interaction.response.send_message(
+                    f"📄 **Recent {len(logs)} Full Command Logs** (sent as file due to length)",
+                    file=discord_file,
+                    ephemeral=True
+                )
+        finally:
+            # Clean up temp file
+            import os
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+    else:
+        # Send as regular message
+        formatted_output = f"📋 **Recent {len(logs)} Full Command Logs**\n```\n{output_text}\n```"
+        await interaction.response.send_message(formatted_output, ephemeral=True)
 
 # Print recent logs
 @bot.tree.command(name='print_logs', description='(Admin) Print recent command logs with email and card digits 9-16')

@@ -170,6 +170,33 @@ def get_recent_logs(count: int = 10) -> list:
         print(f"Error reading log file: {e}")
         return []
 
+def get_full_logs(count: int = 5) -> list:
+    """
+    Get the most recent log entries with email and full command output
+    
+    Args:
+        count: Number of recent logs to retrieve
+    
+    Returns:
+        List of recent log entries with email and command data
+    """
+    current_month = datetime.now().strftime('%Y%m')
+    json_file = os.path.join(LOGS_DIR, f"commands_{current_month}.json")
+    
+    if not os.path.exists(json_file):
+        return []
+    
+    try:
+        with open(json_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Sort by timestamp (most recent first) and take the requested count
+        sorted_data = sorted(data, key=lambda x: x["timestamp"], reverse=True)
+        return sorted_data[:count]
+    except Exception as e:
+        print(f"Error reading log file: {e}")
+        return []
+
 def get_log_stats(month: str = None) -> Dict[str, Any]:
     """
     Get statistics about logged commands
